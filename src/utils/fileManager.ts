@@ -164,14 +164,20 @@ export class FileManager {
         const targetTag = this.options.target.startsWith("#")
             ? this.options.target
             : "#" + this.options.target;
+        const targetTagWithoutHash = this.options.target.replace(/^#/, '');
 
         this.allFiles = allFiles.filter((file) => {
             // Check if the file has the target tag in its cache
             const fileCache =
                 this.options.app?.metadataCache.getFileCache(file);
-            if (!fileCache || !fileCache.tags) return false;
+            if (!fileCache) return false;
 
-            return fileCache.tags.some((tag) => tag.tag === targetTag);
+            const hasFrontmatterTag = Array.isArray(fileCache?.frontmatter?.tags)
+                ? fileCache?.frontmatter?.tags.includes(targetTagWithoutHash)
+                : false;
+
+            const hasInlineTag = fileCache?.tags?.some((tag) => tag.tag === targetTag);
+            return hasFrontmatterTag || hasInlineTag;
         });
 
         // Sort files by the specified time field
