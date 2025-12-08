@@ -15,6 +15,9 @@ export default defineConfig(({mode}) => {
                 preprocess: autoPreprocess()
             })
         ],
+        esbuild: {
+            drop: ['console', 'debugger'],
+        },
         build: {
             sourcemap: mode === 'development' ? 'inline' : false,
             minify: mode !== 'development',
@@ -30,7 +33,8 @@ export default defineConfig(({mode}) => {
                         : terser({
                             compress: {
                                 defaults: false,
-                                drop_console: ['log', 'info'],
+                                drop_console: true,    // 移除所有 console.* 呼叫
+                                drop_debugger: true,   // 移除所有 debugger 語句
                             },
                             mangle: {
                                 eval: true,
@@ -75,7 +79,7 @@ export default defineConfig(({mode}) => {
             },
             // Use root as the output dir
             emptyOutDir: false,
-            outDir: '.',
+            outDir: 'dist',
         },
     };
 });

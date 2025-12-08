@@ -26,3 +26,7 @@ data.json
 *.rar
 *.zip
 *.7z
+
+dist/
+package-lock.json
+.env

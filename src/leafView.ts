@@ -178,7 +178,15 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
     _setActive(evt: MouseEvent) {
         evt.preventDefault();
         evt.stopPropagation();
-        this.plugin.app.workspace.setActiveLeaf(this.leaves()[0], {focus: true});
+        const targetLeaf = this.leaves()[0];
+        console.log('[DEBUG leafView._setActive] mousedown triggered', {
+            targetLeafId: targetLeaf?.id,
+            targetLeafViewType: targetLeaf?.view?.getViewType(),
+            hoverElId: this.hoverEl?.id,
+            allLeavesCount: this.leaves().length,
+            allLeaves: this.leaves().map(l => ({ id: l.id, viewType: l.view?.getViewType() }))
+        });
+        this.plugin.app.workspace.setActiveLeaf(targetLeaf, {focus: true});
     }
 
     getDefaultMode() {
@@ -268,6 +276,11 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
             // @ts-ignore
             this.rootSplit.children.forEach((item: any, index: any) => {
                 if (item instanceof WorkspaceTabs) {
+                    console.log('[DEBUG leafView.layout-change] Replacing WorkspaceTabs child', {
+                        index,
+                        childCount: (item as any).children?.length,
+                        replacingWith: (item as any).children?.[0]?.id
+                    });
                     this.rootSplit.replaceChild(index, (item as any).children[0]);
                 }
             });
@@ -520,6 +533,12 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
             this.opening = false;
             if (this.detaching) this.hide();
         }
+        console.log('[DEBUG leafView.openFile] setActiveLeaf after openFile', {
+            leafId: leaf?.id,
+            leafViewType: leaf?.view?.getViewType(),
+            filePath: file?.path,
+            parentLeaf: (leaf as any)?.parentLeaf?.id
+        });
         this.plugin.app.workspace.setActiveLeaf(leaf);
 
         return leaf;

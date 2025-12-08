@@ -2,6 +2,8 @@
     "root": true,
     "parser": "@typescript-eslint/parser",
     "env": {
+        "browser": true,
+        "es2022": true,
         "node": true
     },
     "plugins": [
