@@ -179,6 +179,16 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
         evt.preventDefault();
         evt.stopPropagation();
         const targetLeaf = this.leaves()[0];
+        
+        // Force CodeMirror to recalculate its coordinate system
+        // This fixes pointer offset issues when the popup window is dragged
+        this.leaves().forEach(leaf => {
+            // @ts-ignore - accessing internal CodeMirror instance
+            const cm = leaf?.view?.editMode?.editor?.cm;
+            if (cm?.requestMeasure) {
+                cm.requestMeasure();
+            }
+        });
         console.log('[DEBUG leafView._setActive] mousedown triggered', {
             targetLeafId: targetLeaf?.id,
             targetLeafViewType: targetLeaf?.view?.getViewType(),

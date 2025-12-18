@@ -271,7 +271,14 @@
 
     // Handle note visibility change with debouncing for "not visible" events
     function handleNoteVisibilityChange(file: TFile, isVisible: boolean) {
-        console.log("inview", isVisible, file.basename);
+        const leafIsVisible =
+            leaf?.height > 0 && (leaf?.view?.containerEl as any)?.isShown?.();
+
+        // CRITICAL FIX: If the leaf itself is not visible (e.g., tab switched away),
+        // ignore "not visible" events to prevent false unload triggers
+        if (!isVisible && !leafIsVisible) {
+            return;
+        }
 
         // Clear any existing timeout for this file
         const existingTimeout = visibilityDebounceTimeouts.get(file.path);
@@ -287,6 +294,14 @@
         } else {
             // Debounce marking as not visible to prevent spurious unloads
             const timeout = window.setTimeout(() => {
+                // Double-check: only remove if the leaf is still visible
+                const stillLeafVisible =
+                    leaf?.height > 0 &&
+                    (leaf?.view?.containerEl as any)?.isShown?.();
+                if (!stillLeafVisible) {
+                    return;
+                }
+
                 visibilityDebounceTimeouts.delete(file.path);
                 visibleNotes.delete(file.path);
                 visibleNotes = visibleNotes;

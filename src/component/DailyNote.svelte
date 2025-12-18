@@ -149,6 +149,21 @@
             const fileName = file instanceof TFile ? file.basename : "unknown";
             console.log(`Unloading editor for ${fileName}`);
 
+            // CRITICAL FIX: Before detaching, if this leaf is active,
+            // switch to parent leaf to prevent Obsidian from jumping to a random leaf
+            const workspace = plugin.app.workspace;
+            const activeLeaf = workspace.activeLeaf;
+
+            // Check if the leaf being unloaded is currently active or if activeLeaf is inside our view
+            const isThisLeafActive = activeLeaf === createdLeaf;
+            const isActiveLeafInOurView =
+                activeLeaf && (activeLeaf as any).parentLeaf === leaf;
+
+            if (isThisLeafActive || isActiveLeafInOurView) {
+                // Set the parent Daily Notes View leaf as active
+                workspace.setActiveLeaf(leaf, { focus: false });
+            }
+
             // Detach the leaf
             if (createdLeaf.detach) {
                 createdLeaf.detach();
