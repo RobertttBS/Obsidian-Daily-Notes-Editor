@@ -7,6 +7,7 @@
         WorkspaceLeaf,
     } from "obsidian";
     import { spawnLeafView } from "../leafView";
+    import { HOVER_LINK_SOURCE } from "../dailyNoteView";
     import { onDestroy, onMount } from "svelte";
 
     export let file: TAbstractFile;
@@ -177,6 +178,18 @@
         } else plugin.app.workspace.getLeaf(false).openFile(file);
     }
 
+    function handleTitleHover(event: MouseEvent) {
+        if (!(file instanceof TFile)) return;
+        plugin.app.workspace.trigger("hover-link", {
+            event,
+            source: HOVER_LINK_SOURCE,
+            hoverParent: leaf.view,
+            targetEl: event.currentTarget as HTMLElement,
+            linktext: file.path,
+            sourcePath: file.path,
+        });
+    }
+
     function handleEditorClick() {
         // @ts-ignore
         const editor = createdLeaf?.view?.editMode?.editor;
@@ -230,6 +243,8 @@
                     role="link"
                     class="clickable-link"
                     on:click={handleFileIconClick}
+                    on:mouseover={handleTitleHover}
+                    on:focus={() => {}}
                     data-title={title}>{title}</span
                 >
             </div>
