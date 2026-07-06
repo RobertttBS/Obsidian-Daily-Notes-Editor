@@ -39,7 +39,7 @@ export default class DailyNoteViewPlugin extends Plugin {
     lastActiveFile: TFile;
     private lastCheckedDay: string;
 
-    settings: DailyNoteSettings;
+    declare settings: DailyNoteSettings;
 
     async onload() {
         this.addSettingTab(new DailyNoteSettingTab(this.app, this));
