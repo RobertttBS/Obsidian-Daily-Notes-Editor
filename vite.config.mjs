@@ -6,17 +6,19 @@ import terser from '@rollup/plugin-terser';
 import replace from '@rollup/plugin-replace';
 import resolve from '@rollup/plugin-node-resolve';
 
-const prod = (process.argv[4] === 'production');
-
 export default defineConfig(({mode}) => {
+    const isDev = mode === 'development';
     return {
         plugins: [
             svelte({
                 preprocess: autoPreprocess()
             })
         ],
-        esbuild: {
-            drop: ['console', 'debugger'],
+        esbuild: isDev ? {} : {
+            // Strip noisy logs in production but keep console.error/warn
+            // so real failures remain diagnosable in the devtools console
+            pure: ['console.log', 'console.info', 'console.debug'],
+            drop: ['debugger'],
         },
         build: {
             sourcemap: mode === 'development' ? 'inline' : false,
@@ -33,8 +35,8 @@ export default defineConfig(({mode}) => {
                         : terser({
                             compress: {
                                 defaults: false,
-                                drop_console: true,    // 移除所有 console.* 呼叫
-                                drop_debugger: true,   // 移除所有 debugger 語句
+                                pure_funcs: ['console.log', 'console.info', 'console.debug'],
+                                drop_debugger: true,
                             },
                             mangle: {
                                 eval: true,

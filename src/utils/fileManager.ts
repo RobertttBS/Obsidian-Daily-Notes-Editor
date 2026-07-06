@@ -513,11 +513,13 @@ export class FileManager {
     }
 
     public getAllFiles(): TFile[] {
-        return this.allFiles;
+        return [...this.allFiles];
     }
 
     public getFilteredFiles(): TFile[] {
-        return this.filteredFiles;
+        // Return a copy: callers drain their list with splice() while lazily
+        // rendering, which must not mutate the manager's internal state
+        return [...this.filteredFiles];
     }
 
     public hasCurrentDayNote(): boolean {
