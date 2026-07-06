@@ -6,7 +6,7 @@
     import DailyNote from "./DailyNote.svelte";
     import { inview } from "svelte-inview";
     import { TimeRange, SelectionMode, TimeField } from "../types/time";
-    import { onMount } from "svelte";
+    import { onDestroy, onMount } from "svelte";
     import { FileManager, FileManagerOptions } from "../utils/fileManager";
 
     export let plugin: DailyNoteViewPlugin;
@@ -18,7 +18,7 @@
     export let timeField: TimeField = "mtime"; // 默认使用修改时间
 
     const size = 1;
-    let intervalId;
+    let intervalId: number | null = null;
 
     let renderedFiles: TFile[] = [];
     let filteredFiles: TFile[] = [];
@@ -80,6 +80,14 @@
         updateTitleElement();
     });
 
+    onDestroy(() => {
+        stopFillViewport();
+        for (const timeout of visibilityDebounceTimeouts.values()) {
+            window.clearTimeout(timeout);
+        }
+        visibilityDebounceTimeouts.clear();
+    });
+
     // Function to update the title element with range information
     function updateTitleElement() {
         if (!leaf || !leaf.view || !leaf.view.titleEl) return;
@@ -120,20 +128,28 @@
 
     function startFillViewport() {
         if (!intervalId) {
-            intervalId = setInterval(infiniteHandler, 1);
+            intervalId = window.setInterval(infiniteHandler, 1);
         }
     }
 
     function stopFillViewport() {
-        clearInterval(intervalId);
-        intervalId = null;
+        if (intervalId) {
+            window.clearInterval(intervalId);
+            intervalId = null;
+        }
     }
 
     function infiniteHandler() {
         if (leaf.height === 0) return;
-        if (!fileManager || !hasMore) return;
+        if (!fileManager) return;
+        if (!hasMore) {
+            // Nothing left to load; no need to keep polling
+            stopFillViewport();
+            return;
+        }
         if (filteredFiles.length === 0) {
             hasMore = false;
+            stopFillViewport();
         } else {
             renderedFiles = [
                 ...renderedFiles,
@@ -269,14 +285,22 @@
     // Debounce timeout for visibility changes
     const visibilityDebounceTimeouts: Map<string, number> = new Map();
 
+    // Whether the Daily Notes View leaf itself is visible on screen.
+    // When it is hidden (tab switched away, layout adjustments), the
+    // IntersectionObserver reports every note as "not visible", which must
+    // not be treated as a real scroll-out.
+    function isLeafVisible(): boolean {
+        return (
+            leaf?.height > 0 &&
+            !!(leaf?.view?.containerEl as any)?.isShown?.()
+        );
+    }
+
     // Handle note visibility change with debouncing for "not visible" events
     function handleNoteVisibilityChange(file: TFile, isVisible: boolean) {
-        const leafIsVisible =
-            leaf?.height > 0 && (leaf?.view?.containerEl as any)?.isShown?.();
-
         // CRITICAL FIX: If the leaf itself is not visible (e.g., tab switched away),
         // ignore "not visible" events to prevent false unload triggers
-        if (!isVisible && !leafIsVisible) {
+        if (!isVisible && !isLeafVisible()) {
             return;
         }
 
@@ -294,15 +318,13 @@
         } else {
             // Debounce marking as not visible to prevent spurious unloads
             const timeout = window.setTimeout(() => {
+                visibilityDebounceTimeouts.delete(file.path);
+
                 // Double-check: only remove if the leaf is still visible
-                const stillLeafVisible =
-                    leaf?.height > 0 &&
-                    (leaf?.view?.containerEl as any)?.isShown?.();
-                if (!stillLeafVisible) {
+                if (!isLeafVisible()) {
                     return;
                 }
 
-                visibilityDebounceTimeouts.delete(file.path);
                 visibleNotes.delete(file.path);
                 visibleNotes = visibleNotes;
             }, 1000);

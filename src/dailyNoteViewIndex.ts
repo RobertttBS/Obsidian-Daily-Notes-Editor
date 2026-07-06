@@ -239,15 +239,7 @@ export default class DailyNoteViewPlugin extends Plugin {
             setActiveLeaf: (next: any) =>
                 function (e: WorkspaceLeaf, t?: any) {
                     if ((e as any).parentLeaf) {
-                        console.log('[DEBUG patchWorkspace.setActiveLeaf] INTERCEPTED - has parentLeaf', {
-                            originalLeafId: (e as any).id,
-                            originalLeafViewType: e.view?.getViewType(),
-                            parentLeafId: (e as any).parentLeaf?.id,
-                            parentLeafViewType: (e as any).parentLeaf?.view?.getViewType(),
-                            hasEditMode: !!(e.view as any).editMode,
-                            options: t
-                        });
-                        (e as any).parentLeaf.activeTime = 1700000000000;
+                        (e as any).parentLeaf.activeTime = Date.now();
 
                         next.call(this, (e as any).parentLeaf, t);
                         if ((e.view as any).editMode) {
@@ -256,11 +248,6 @@ export default class DailyNoteViewPlugin extends Plugin {
                         }
                         return;
                     }
-                    console.log('[DEBUG patchWorkspace.setActiveLeaf] PASS-THROUGH - no parentLeaf', {
-                        leafId: (e as any).id,
-                        leafViewType: e.view?.getViewType(),
-                        options: t
-                    });
                     return next.call(this, e, t);
                 },
         });

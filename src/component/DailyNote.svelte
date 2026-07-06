@@ -22,6 +22,7 @@
 
     let createdLeaf: WorkspaceLeaf;
     let unloadTimeout: number | null = null;
+    let measureTimeout: number | null = null;
     let editorHeight: number = 100; // Default minimum height
 
     // Track if this component is being destroyed
@@ -36,8 +37,6 @@
         }
     });
 
-    console.log(shouldRender, rendered);
-
     $: if (editorEl && shouldRender && !rendered) {
         showEditor();
     } else if (editorEl && !shouldRender && rendered) {
@@ -48,6 +47,11 @@
         isDestroying = true;
         if (unloadTimeout) {
             window.clearTimeout(unloadTimeout);
+            unloadTimeout = null;
+        }
+        if (measureTimeout) {
+            window.clearTimeout(measureTimeout);
+            measureTimeout = null;
         }
         if (rendered && createdLeaf) {
             unloadEditor();
@@ -66,10 +70,6 @@
         }
 
         try {
-            // Use safe type checking before accessing basename
-            const fileName = file instanceof TFile ? file.basename : "unknown";
-            console.log(`Loading editor for ${fileName}`);
-
             [createdLeaf] = spawnLeafView(plugin, editorEl, leaf);
             createdLeaf.setPinned(true);
 
@@ -91,31 +91,22 @@
                     },
                 },
             });
-            console.log("[DEBUG DailyNote.svelte] Setting parentLeaf", {
-                createdLeafId: (createdLeaf as any)?.id,
-                createdLeafViewType: createdLeaf?.view?.getViewType?.(),
-                parentLeafId: (leaf as any)?.id,
-                parentLeafViewType: leaf?.view?.getViewType?.(),
-                filePath: file?.path,
-            });
             createdLeaf.parentLeaf = leaf;
 
             rendered = true;
 
             // Set a small timeout to allow the editor to render completely
-            const timeout = window.setTimeout(() => {
+            measureTimeout = window.setTimeout(() => {
+                measureTimeout = null;
                 if (createdLeaf && containerEl) {
                     // Get the actual height of the editor content
                     if (!(createdLeaf.view instanceof MarkdownView)) return;
-                    // @ts-ignore
-                    const actualHeight =
-                        createdLeaf.view.editMode?.editor?.cm?.dom.innerHeight;
+                    const actualHeight = (createdLeaf.view as any).editMode
+                        ?.editor?.cm?.dom.innerHeight;
                     if (actualHeight > 0) {
                         editorHeight = actualHeight;
                         // Apply the height to the container
                         containerEl.style.minHeight = `${editorHeight}px`;
-
-                        window.clearTimeout(timeout);
                     }
                 }
             }, 400);
@@ -145,10 +136,6 @@
         if (!rendered || !createdLeaf) return;
 
         try {
-            // Use safe type checking before accessing basename
-            const fileName = file instanceof TFile ? file.basename : "unknown";
-            console.log(`Unloading editor for ${fileName}`);
-
             // CRITICAL FIX: Before detaching, if this leaf is active,
             // switch to parent leaf to prevent Obsidian from jumping to a random leaf
             const workspace = plugin.app.workspace;
@@ -193,17 +180,7 @@
     function handleEditorClick() {
         // @ts-ignore
         const editor = createdLeaf?.view?.editMode?.editor;
-        console.log("[DEBUG DailyNote.handleEditorClick] Editor click", {
-            hasEditor: !!editor,
-            hasFocus: editor?.hasFocus?.(),
-            createdLeafId: (createdLeaf as any)?.id,
-            createdLeafViewType: createdLeaf?.view?.getViewType?.(),
-            parentLeafId: (createdLeaf as any)?.parentLeaf?.id,
-        });
         if (editor && !editor.hasFocus()) {
-            console.log(
-                "[DEBUG DailyNote.handleEditorClick] Calling editor.focus()",
-            );
             editor.focus();
         }
     }

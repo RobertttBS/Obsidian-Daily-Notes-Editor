@@ -357,8 +357,8 @@ export class DailyNoteView extends ItemView {
             }
         });
 
-        this.app.vault.on("create", this.onFileCreate);
-        this.app.vault.on("delete", this.onFileDelete);
+        this.registerEvent(this.app.vault.on("create", this.onFileCreate));
+        this.registerEvent(this.app.vault.on("delete", this.onFileDelete));
     }
 
     onPaneMenu(
