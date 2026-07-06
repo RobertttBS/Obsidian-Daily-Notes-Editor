@@ -28,7 +28,11 @@ import {
 } from "obsidian-daily-notes-interface";
 import { createUpDownNavigationExtension } from "./component/UpAndDownNavigate";
 // import { setActiveEditorExt } from "./component/SetActiveEditor";
-import { DAILY_NOTE_VIEW_TYPE, DailyNoteView } from "./dailyNoteView";
+import {
+    DAILY_NOTE_VIEW_TYPE,
+    HOVER_LINK_SOURCE,
+    DailyNoteView,
+} from "./dailyNoteView";
 
 export default class DailyNoteViewPlugin extends Plugin {
     private view: DailyNoteView;
@@ -60,6 +64,13 @@ export default class DailyNoteViewPlugin extends Plugin {
             DAILY_NOTE_VIEW_TYPE,
             (leaf: WorkspaceLeaf) => (this.view = new DailyNoteView(leaf, this))
         );
+
+        // Allow the daily note titles to trigger the core Page Preview plugin
+        // (and plugins like Hover Editor that hook into it)
+        this.registerHoverLinkSource(HOVER_LINK_SOURCE, {
+            display: "Daily Notes Editor",
+            defaultMod: false,
+        });
 
         this.addRibbonIcon(
             "calendar-range",

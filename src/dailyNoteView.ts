@@ -9,20 +9,24 @@ import {
     Modal,
     App,
     ButtonComponent,
+    HoverPopover,
+    HoverParent,
 } from "obsidian";
 import { TimeRange, TimeField } from "./types/time";
 import DailyNoteEditorView from "./component/DailyNoteEditorView.svelte";
 export const DAILY_NOTE_VIEW_TYPE = "daily-note-editor-view";
+export const HOVER_LINK_SOURCE = "daily-notes-editor";
 
 export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {
     // Work around missing enhance.js API by checking match condition instead of looking up parent
     return (leaf as any).containerEl.matches(".dn-leaf-view");
 }
 
-export class DailyNoteView extends ItemView {
+export class DailyNoteView extends ItemView implements HoverParent {
     view: DailyNoteEditorView;
     plugin: DailyNoteViewPlugin;
     scope: Scope;
+    hoverPopover: HoverPopover | null = null;
 
     selectedDaysRange: TimeRange = "all";
     selectionMode: "daily" | "folder" | "tag" = "daily";
