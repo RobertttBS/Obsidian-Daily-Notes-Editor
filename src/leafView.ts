@@ -21,7 +21,6 @@ import {
 } from "obsidian";
 
 import type DailyNoteViewPlugin from "./dailyNoteViewIndex";
-import { genId } from "./utils/utils";
 
 
 export interface DailyNoteEditorParent {
@@ -63,31 +62,20 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
     onTarget: boolean;
     setActive: (event: MouseEvent) => void;
 
-    lockedOut: boolean;
     abortController? = this.addChild(new Component());
     detaching = false;
     opening = false;
 
     // @ts-ignore
     rootSplit: WorkspaceSplit = new (WorkspaceSplit as ConstructableWorkspaceSplit)(window.app.workspace, "vertical");
-    isPinned = true;
 
     titleEl: HTMLElement;
     containerEl: HTMLElement;
 
-    // It is currently not useful.
-    // leafInHoverEl: WorkspaceLeaf;
-
     oldPopover = this.parent?.DailyNoteEditor;
     document: Document;
 
-    id = genId(8);
-    bounce?: NodeJS.Timeout;
-    boundOnZoomOut: () => void;
-
-    originalPath: string; // these are kept to avoid adopting targets w/a different link
-    originalLinkText: string;
-    static activePopover?: DailyNoteEditor;
+    id = crypto.randomUUID().slice(0, 8);
 
     static activeWindows() {
         const windows: Window[] = [window];
@@ -117,19 +105,6 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
         return (Array.prototype.slice.call(win?.document?.body.querySelectorAll(".dn-leaf-view") ?? []) as HTMLElement[])
             .map(el => popovers.get(el)!)
             .filter(he => he);
-    }
-
-    static forLeaf(leaf: WorkspaceLeaf | undefined) {
-        // leaf can be null such as when right clicking on an internal link
-        const el = leaf && document.body.matchParent.call(leaf.containerEl, ".dn-leaf-view"); // work around matchParent race condition
-        return el ? popovers.get(el) : undefined;
-    }
-
-    static iteratePopoverLeaves(ws: Workspace, cb: (leaf: WorkspaceLeaf) => boolean | void) {
-        for (const popover of this.activePopovers()) {
-            if (popover.rootSplit && ws.iterateLeaves(cb, popover.rootSplit)) return true;
-        }
-        return false;
     }
 
     hoverEl: HTMLElement;
@@ -320,15 +295,6 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 
         this.onShowCallback?.();
         this.onShowCallback = undefined; // only call it once
-    }
-
-    detect(el: HTMLElement) {
-        // TODO: may not be needed? the mouseover/out handers handle most detection use cases
-        const {targetEl} = this;
-
-        if (targetEl) {
-            this.onTarget = el === targetEl || targetEl.contains(el);
-        }
     }
 
     shouldShow() {

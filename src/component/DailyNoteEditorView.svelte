@@ -251,8 +251,8 @@
             // For daily notes, we need to check if the file should be added to the rendered files
             const filteredFiles = fileManager.getFilteredFiles();
             if (
-                filteredFiles.some((f) => f.basename === file.basename) &&
-                !renderedFiles.some((f) => f.basename === file.basename)
+                filteredFiles.some((f) => f.path === file.path) &&
+                !renderedFiles.some((f) => f.path === file.path)
             ) {
                 renderedFiles = [file, ...renderedFiles];
                 // Automatically mark the new note as visible
@@ -271,9 +271,9 @@
         fileManager.fileDelete(file);
 
         // Remove the file from rendered files if it exists
-        renderedFiles = renderedFiles.filter((dailyNote) => {
-            return dailyNote.basename !== file.basename;
-        });
+        renderedFiles = renderedFiles.filter(
+            (dailyNote) => dailyNote.path !== file.path
+        );
 
         // Remove from visible notes
         if (visibleNotes.has(file.path)) {

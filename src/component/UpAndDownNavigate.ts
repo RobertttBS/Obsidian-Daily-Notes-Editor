@@ -30,20 +30,6 @@ function getEditor(leaf: WorkspaceLeaf): Editor | null {
 }
 
 /**
- * Get the CodeMirror editor instance from a leaf
- */
-export function getEditorView(leaf: WorkspaceLeaf): EditorView | null {
-    if (!leaf) return null;
-
-    const view = leaf.view;
-    if (!(view instanceof MarkdownView)) return null;
-
-    // Access the CodeMirror editor instance
-    // @ts-ignore - Accessing private property
-    return view.editor.cm;
-}
-
-/**
  * Find the next or previous leaf in the daily notes view
  * @param app The Obsidian app instance
  * @param currentLeaf The current leaf

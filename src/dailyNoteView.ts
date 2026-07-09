@@ -11,16 +11,12 @@ import {
     ButtonComponent,
     HoverPopover,
     HoverParent,
+    moment,
 } from "obsidian";
 import { TimeRange, TimeField } from "./types/time";
 import DailyNoteEditorView from "./component/DailyNoteEditorView.svelte";
 export const DAILY_NOTE_VIEW_TYPE = "daily-note-editor-view";
 export const HOVER_LINK_SOURCE = "daily-notes-editor";
-
-export function isEmebeddedLeaf(leaf: WorkspaceLeaf) {
-    // Work around missing enhance.js API by checking match condition instead of looking up parent
-    return (leaf as any).containerEl.matches(".dn-leaf-view");
-}
 
 export class DailyNoteView extends ItemView implements HoverParent {
     view: DailyNoteEditorView;
@@ -294,18 +290,6 @@ export class DailyNoteView extends ItemView implements HoverParent {
             menu.showAtMouseEvent(e);
         });
 
-        // Add "Save as Preset" button when in folder or tag mode
-        // this.addAction("bookmark", "Save as preset", (e) => {
-        //     // Only enable for folder and tag modes with a target
-        //     if (this.selectionMode !== "daily" && this.target) {
-        //         this.saveCurrentSelectionAsPreset();
-        //         // Show a small notification
-        //         new Notice("Preset saved");
-        //     }
-        // });
-
-        // Add action for selecting time field (for folder and tag modes)
-
         this.addAction("calendar-range", "Select date range", (e) => {
             const menu = new Menu();
             // Add range selection options
@@ -345,21 +329,7 @@ export class DailyNoteView extends ItemView implements HoverParent {
             menu.showAtMouseEvent(e as MouseEvent);
         });
 
-        this.addAction("refresh", "Refresh", () => {
-            if (this.view) {
-                // Tell the Svelte component to check for daily notes
-                this.view.check();
-
-                // Update the view to get the latest files
-                this.view.tick();
-
-                // Force a refresh of the file list
-                this.view.$set({
-                    selectedRange: this.selectedDaysRange,
-                    customRange: this.customRange,
-                });
-            }
-        });
+        this.addAction("refresh", "Refresh", () => this.refreshView());
 
         this.registerEvent(this.app.vault.on("create", this.onFileCreate));
         this.registerEvent(this.app.vault.on("delete", this.onFileDelete));
@@ -382,29 +352,25 @@ export class DailyNoteView extends ItemView implements HoverParent {
         }
     }
 
+    private refreshView(): void {
+        if (!this.view) return;
+
+        // Tell the Svelte component to check for daily notes,
+        // refresh its file list, and re-render
+        this.view.check();
+        this.view.tick();
+        this.view.$set({
+            selectedRange: this.selectedDaysRange,
+            customRange: this.customRange,
+        });
+    }
+
     /**
      * Refresh the view for a new day
      * This is called when the date changes (e.g., after midnight)
      */
     public refreshForNewDay(): void {
-        // If we're in daily note mode, we need to refresh the view
-        // to show the current day's note
-        if (this.selectionMode === "daily") {
-            // Reset the view properties to trigger a reload
-            if (this.view) {
-                // Tell the Svelte component to check for daily notes
-                this.view.check();
-
-                // Update the view to get the latest files
-                this.view.tick();
-
-                // Force a refresh of the file list
-                this.view.$set({
-                    selectedRange: this.selectedDaysRange,
-                    customRange: this.customRange,
-                });
-            }
-        }
+        if (this.selectionMode === "daily") this.refreshView();
     }
 }
 
@@ -475,10 +441,7 @@ class CustomRangeModal extends Modal {
     }
 
     formatDate(date: Date): string {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
+        return moment(date).format("YYYY-MM-DD");
     }
 
     onClose() {

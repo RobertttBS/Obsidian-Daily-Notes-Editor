@@ -2,9 +2,6 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import {svelte} from '@sveltejs/vite-plugin-svelte';
 import autoPreprocess from 'svelte-preprocess';
-import terser from '@rollup/plugin-terser';
-import replace from '@rollup/plugin-replace';
-import resolve from '@rollup/plugin-node-resolve';
 
 export default defineConfig(({mode}) => {
     const isDev = mode === 'development';
@@ -14,6 +11,7 @@ export default defineConfig(({mode}) => {
                 preprocess: autoPreprocess()
             })
         ],
+        define: {'process.env.NODE_ENV': JSON.stringify(mode)},
         esbuild: isDev ? {} : {
             // Strip noisy logs in production but keep console.error/warn
             // so real failures remain diagnosable in the devtools console
@@ -29,35 +27,6 @@ export default defineConfig(({mode}) => {
                 formats: ['cjs'],
             },
             rollupOptions: {
-                plugins: [
-                    mode === 'development'
-                        ? ''
-                        : terser({
-                            compress: {
-                                defaults: false,
-                                pure_funcs: ['console.log', 'console.info', 'console.debug'],
-                                drop_debugger: true,
-                            },
-                            mangle: {
-                                eval: true,
-                                module: true,
-                                toplevel: true,
-                                safari10: true,
-                                properties: false,
-                            },
-                            output: {
-                                comments: false,
-                                ecma: '2020',
-                            },
-                        }),
-                    resolve({
-                        browser: false,
-                    }),
-                    replace({
-                        preventAssignment: true,
-                        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-                    }),
-                ],
                 output: {
                     // Overwrite default Vite output fileName
                     entryFileNames: 'main.js',

@@ -27,7 +27,6 @@ import {
     createDailyNote,
 } from "obsidian-daily-notes-interface";
 import { createUpDownNavigationExtension } from "./component/UpAndDownNavigate";
-// import { setActiveEditorExt } from "./component/SetActiveEditor";
 import {
     DAILY_NOTE_VIEW_TYPE,
     HOVER_LINK_SOURCE,
@@ -36,7 +35,6 @@ import {
 
 export default class DailyNoteViewPlugin extends Plugin {
     private view: DailyNoteView;
-    lastActiveFile: TFile;
     private lastCheckedDay: string;
 
     declare settings: DailyNoteSettings;
@@ -139,19 +137,6 @@ export default class DailyNoteViewPlugin extends Plugin {
         // Get the view and set the selection mode to folder
         const view = leaf.view as DailyNoteView;
         view.setSelectionMode("folder", folderPath);
-        view.setTimeField(timeField);
-
-        workspace.revealLeaf(leaf);
-    }
-
-    async openTagView(tagName: string, timeField: TimeField = "mtime") {
-        const workspace = this.app.workspace;
-        const leaf = workspace.getLeaf(true);
-        await leaf.setViewState({ type: DAILY_NOTE_VIEW_TYPE });
-
-        // Get the view and set the selection mode to tag
-        const view = leaf.view as DailyNoteView;
-        view.setSelectionMode("tag", tagName);
         view.setTimeField(timeField);
 
         workspace.revealLeaf(leaf);
