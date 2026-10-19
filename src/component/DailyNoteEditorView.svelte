@@ -245,6 +245,8 @@
 
     export function fileCreate(file: TFile) {
         fileManager.fileCreate(file);
+        // Invalidate so the "create today's note" prompt re-checks hasCurrentDayNote()
+        fileManager = fileManager;
 
         // Update the rendered files if needed
         if (selectionMode === "daily") {

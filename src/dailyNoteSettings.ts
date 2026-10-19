@@ -4,7 +4,9 @@ import { App, debounce, PluginSettingTab, Setting, Modal } from "obsidian";
 export interface DailyNoteSettings {
     hideFrontmatter: boolean;
     hideBacklinks: boolean;
+    // Only opens the editor on startup now; key name kept for saved data.json compatibility
     createAndOpenOnStartup: boolean;
+    autoCreateDailyNote: boolean;
     useArrowUpOrDownToNavigate: boolean;
 
     preset: {
@@ -17,6 +19,7 @@ export const DEFAULT_SETTINGS: DailyNoteSettings = {
     hideFrontmatter: false,
     hideBacklinks: false,
     createAndOpenOnStartup: false,
+    autoCreateDailyNote: false,
     useArrowUpOrDownToNavigate: false,
     preset: [],
 };
@@ -94,15 +97,29 @@ export class DailyNoteSettingTab extends PluginSettingTab {
             );
 
         new Setting(containerEl)
-            .setName("Create and open Daily Notes Editor on startup")
+            .setName("Open Daily Notes Editor on startup")
             .setDesc(
-                "Automatically create today's daily note and open the Daily Notes Editor when Obsidian starts"
+                "Automatically open the Daily Notes Editor when Obsidian starts"
             )
             .addToggle((toggle) =>
                 toggle
                     .setValue(settings.createAndOpenOnStartup)
                     .onChange(async (value) => {
                         this.plugin.settings.createAndOpenOnStartup = value;
+                        this.applySettingsUpdate();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName("Auto-create today's daily note")
+            .setDesc(
+                "Automatically create today's daily note on startup and when the day changes"
+            )
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(settings.autoCreateDailyNote)
+                    .onChange(async (value) => {
+                        this.plugin.settings.autoCreateDailyNote = value;
                         this.applySettingsUpdate();
                     })
             );

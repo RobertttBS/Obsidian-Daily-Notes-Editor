@@ -83,20 +83,20 @@ export default class DailyNoteViewPlugin extends Plugin {
 
         this.initCssRules();
 
-        // Create daily note and open the Daily Notes Editor on startup if enabled
-        if (this.settings.createAndOpenOnStartup) {
-            this.app.workspace.onLayoutReady(async () => {
-                // First ensure today's daily note exists
+        // Create daily note and/or open the Daily Notes Editor on startup if enabled
+        this.app.workspace.onLayoutReady(async () => {
+            if (this.settings.autoCreateDailyNote) {
                 await this.ensureTodaysDailyNoteExists();
+            }
+            if (this.settings.createAndOpenOnStartup) {
                 if (
                     this.app.workspace.getLeavesOfType(DAILY_NOTE_VIEW_TYPE)
                         .length > 0
                 )
                     return;
-                // Then open the Daily Notes Editor
                 await this.openDailyNoteEditor();
-            });
-        }
+            }
+        });
 
         // Also check periodically (every 15 minutes) for day changes
         this.registerInterval(
@@ -313,11 +313,12 @@ export default class DailyNoteViewPlugin extends Plugin {
     }
 
     public async loadSettings() {
-        this.settings = Object.assign(
-            {},
-            DEFAULT_SETTINGS,
-            await this.loadData()
-        );
+        const data = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+        // Migrate: createAndOpenOnStartup used to also auto-create the daily note
+        if (data?.autoCreateDailyNote === undefined && data?.createAndOpenOnStartup) {
+            this.settings.autoCreateDailyNote = true;
+        }
     }
 
     async saveSettings() {
@@ -331,7 +332,7 @@ export default class DailyNoteViewPlugin extends Plugin {
             this.lastCheckedDay = currentDay;
             console.log("Day changed, updating daily notes view");
 
-            if (this.settings.createAndOpenOnStartup) {
+            if (this.settings.autoCreateDailyNote) {
                 await this.ensureTodaysDailyNoteExists();
             }
 
