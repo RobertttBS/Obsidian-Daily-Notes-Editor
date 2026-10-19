@@ -9,7 +9,7 @@ import {
 } from "obsidian";
 import { EditorView, KeyBinding, keymap } from "@codemirror/view";
 import { Extension, Prec } from "@codemirror/state";
-import { isDailyNoteLeaf } from "../leafView";
+import { DailyNoteEditor, isDailyNoteLeaf } from "../leafView";
 import DailyNoteViewPlugin from "src/dailyNoteViewIndex";
 
 export interface UpAndDownNavigateOptions {
@@ -31,26 +31,23 @@ function getEditor(leaf: WorkspaceLeaf): Editor | null {
 
 /**
  * Find the next or previous leaf in the daily notes view
- * @param app The Obsidian app instance
  * @param currentLeaf The current leaf
  * @param direction 'up' or 'down'
  * @returns The next or previous leaf, or null if not found
  */
 function findAdjacentLeaf(
-    app: App,
     currentLeaf: WorkspaceLeaf,
     direction: "up" | "down"
 ): WorkspaceLeaf | null {
     if (!currentLeaf || !isDailyNoteLeaf(currentLeaf)) return null;
 
-    // Get all daily note leaves
-    const dailyNoteLeaves: WorkspaceLeaf[] = [];
-
-    app.workspace.iterateAllLeaves((leaf) => {
-        if (isDailyNoteLeaf(leaf)) {
-            dailyNoteLeaves.push(leaf);
-        }
-    });
+    // Embedded leaves live in popover rootSplits outside the workspace tree,
+    // so iterateAllLeaves can't see them; collect them from the popovers,
+    // scoped to the current view so side-by-side views don't interleave
+    const viewEl = currentLeaf.containerEl.closest(".daily-note-view");
+    const dailyNoteLeaves = DailyNoteEditor.activePopovers()
+        .flatMap((p) => p.leaves())
+        .filter((leaf) => viewEl?.contains(leaf.containerEl));
 
     // Sort leaves by their position in the DOM
     dailyNoteLeaves.sort((a, b) => {
@@ -83,7 +80,7 @@ function navigateToAdjacentLeaf(
     currentLeaf: WorkspaceLeaf,
     direction: "up" | "down"
 ): boolean {
-    const targetLeaf = findAdjacentLeaf(app, currentLeaf, direction);
+    const targetLeaf = findAdjacentLeaf(currentLeaf, direction);
     if (!targetLeaf) return false;
 
     // Focus the target leaf

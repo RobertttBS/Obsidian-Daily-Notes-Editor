@@ -103,17 +103,19 @@ export default class DailyNoteViewPlugin extends Plugin {
             window.setInterval(this.checkDayChange.bind(this), 1000 * 60 * 15)
         );
 
-        this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
-            if (file instanceof TFolder) {
-                menu.addItem((item) => {
-                    item.setIcon("calendar-range");
-                    item.setTitle("Open daily notes for this folder");
-                    item.onClick(() => {
-                        this.openFolderView(file.path);
+        this.registerEvent(
+            this.app.workspace.on("file-menu", (menu, file) => {
+                if (file instanceof TFolder) {
+                    menu.addItem((item) => {
+                        item.setIcon("calendar-range");
+                        item.setTitle("Open daily notes for this folder");
+                        item.onClick(() => {
+                            this.openFolderView(file.path);
+                        });
                     });
-                });
-            }
-        });
+                }
+            })
+        );
     }
 
     onunload() {
