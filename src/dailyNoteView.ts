@@ -170,7 +170,7 @@ export class DailyNoteView extends ItemView implements HoverParent {
                 },
             });
 
-            this.app.workspace.onLayoutReady(this.view.tick.bind(this));
+            this.app.workspace.onLayoutReady(this.view.tick);
 
             this.registerInterval(
                 window.setInterval(async () => {

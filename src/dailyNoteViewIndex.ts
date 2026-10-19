@@ -1,20 +1,14 @@
 import {
     Plugin,
-    OpenViewState,
-    TFile,
     Workspace,
-    WorkspaceContainer,
-    WorkspaceItem,
     WorkspaceLeaf,
     moment,
-    requireApiVersion,
     TFolder,
 } from "obsidian";
 
 import { around } from "monkey-around";
-import { DailyNoteEditor, isDailyNoteLeaf } from "./leafView";
+import { isDailyNoteLeaf } from "./leafView";
 import "./style/index.css";
-import { addIconList } from "./utils/icon";
 import {
     DailyNoteSettings,
     DailyNoteSettingTab,
@@ -44,7 +38,6 @@ export default class DailyNoteViewPlugin extends Plugin {
         await this.loadSettings();
         this.patchWorkspace();
         this.patchWorkspaceLeaf();
-        addIconList();
 
         this.lastCheckedDay = moment().format("YYYY-MM-DD");
 
@@ -170,7 +163,6 @@ export default class DailyNoteViewPlugin extends Plugin {
     }
 
     patchWorkspace() {
-        let layoutChanging = false;
         const uninstaller = around(Workspace.prototype, {
             getActiveViewOfType: (next: any) =>
                 function (t: any) {
@@ -187,53 +179,6 @@ export default class DailyNoteViewPlugin extends Plugin {
                     }
                     return result;
                 },
-            changeLayout(old) {
-                return async function (workspace: unknown) {
-                    layoutChanging = true;
-                    try {
-                        // Don't consider hover popovers part of the workspace while it's changing
-                        await old.call(this, workspace);
-                    } finally {
-                        layoutChanging = false;
-                    }
-                };
-            },
-            iterateLeaves(old) {
-                type leafIterator = (item: WorkspaceLeaf) => boolean | void;
-                return function (arg1, arg2) {
-                    // Fast exit if desired leaf found
-                    if (old.call(this, arg1, arg2)) return true;
-
-                    // Handle old/new API parameter swap
-                    const cb: leafIterator = (
-                        typeof arg1 === "function" ? arg1 : arg2
-                    ) as leafIterator;
-                    const parent: WorkspaceItem = (
-                        typeof arg1 === "function" ? arg2 : arg1
-                    ) as WorkspaceItem;
-
-                    if (!parent) return false; // <- during app startup, rootSplit can be null
-                    if (layoutChanging) return false; // Don't let HEs close during workspace change
-
-                    // 0.14.x doesn't have WorkspaceContainer; this can just be an instanceof check once 15.x is mandatory:
-                    if (!requireApiVersion("0.15.0")) {
-                        if (
-                            parent === this.app.workspace.rootSplit ||
-                            (WorkspaceContainer &&
-                                parent instanceof WorkspaceContainer)
-                        ) {
-                            for (const popover of DailyNoteEditor.popoversForWindow(
-                                (parent as WorkspaceContainer).win
-                            )) {
-                                // Use old API here for compat w/0.14.x
-                                if (old.call(this, cb, popover.rootSplit))
-                                    return true;
-                            }
-                        }
-                    }
-                    return false;
-                };
-            },
             setActiveLeaf: (next: any) =>
                 function (e: WorkspaceLeaf, t?: any) {
                     if ((e as any).parentLeaf) {
@@ -241,6 +186,8 @@ export default class DailyNoteViewPlugin extends Plugin {
 
                         next.call(this, (e as any).parentLeaf, t);
                         if ((e.view as any).editMode) {
+                            // No-op on 1.14+ (setter ignores MarkdownView; the getter
+                            // falls back to getActiveViewOfType); kept for older versions
                             this.activeEditor = e.view;
                             (e as any).parentLeaf.view.editMode = e.view;
                         }
@@ -269,45 +216,6 @@ export default class DailyNoteViewPlugin extends Plugin {
                         old.call(this, pinned);
                         if (isDailyNoteLeaf(this) && !pinned)
                             this.setPinned(true);
-                    };
-                },
-                openFile(old) {
-                    return function (file: TFile, openState?: OpenViewState) {
-                        if (isDailyNoteLeaf(this)) {
-                            setTimeout(
-                                around(Workspace.prototype, {
-                                    recordMostRecentOpenedFile(old) {
-                                        return function (_file: TFile) {
-                                            // Don't update the quick switcher's recent list
-                                            if (_file !== file) {
-                                                return old.call(this, _file);
-                                            }
-                                        };
-                                    },
-                                }),
-                                1
-                            );
-                            const recentFiles =
-                                this.app.plugins.plugins[
-                                    "recent-files-obsidian"
-                                ];
-                            if (recentFiles)
-                                setTimeout(
-                                    around(recentFiles, {
-                                        shouldAddFile(old) {
-                                            return function (_file: TFile) {
-                                                // Don't update the Recent Files plugin
-                                                return (
-                                                    _file !== file &&
-                                                    old.call(this, _file)
-                                                );
-                                            };
-                                        },
-                                    }),
-                                    1
-                                );
-                        }
-                        return old.call(this, file, openState);
                     };
                 },
             })
