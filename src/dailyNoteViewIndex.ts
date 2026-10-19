@@ -331,7 +331,9 @@ export default class DailyNoteViewPlugin extends Plugin {
             this.lastCheckedDay = currentDay;
             console.log("Day changed, updating daily notes view");
 
-            await this.ensureTodaysDailyNoteExists();
+            if (this.settings.createAndOpenOnStartup) {
+                await this.ensureTodaysDailyNoteExists();
+            }
 
             const dailyNoteLeaves =
                 this.app.workspace.getLeavesOfType(DAILY_NOTE_VIEW_TYPE);
