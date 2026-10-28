@@ -287,6 +287,33 @@
     // Debounce timeout for visibility changes
     const visibilityDebounceTimeouts: Map<string, number> = new Map();
 
+    // Notes currently within the inview margin. A note stays loaded after it
+    // leaves: a fresh editor guesses the height of its unmeasured lines 3-5x
+    // too tall until it is on screen, so reloading a note above the viewport
+    // threw the scroll position thousands of pixels. Only when more than
+    // MAX_LOADED editors are alive are the ones farthest from the viewport
+    // released.
+    const nearViewport: Set<string> = new Set();
+    const MAX_LOADED = 40;
+
+    function evictFarNotes() {
+        if (visibleNotes.size <= MAX_LOADED) return;
+        const scrollTop = leaf.view.contentEl.scrollTop;
+        const far = renderedFiles
+            .filter((f) => visibleNotes.has(f.path) && !nearViewport.has(f.path))
+            .map((f) => {
+                const el = leaf.view.contentEl.querySelector(
+                    `[data-id="dn-editor-${CSS.escape(f.path)}"]`
+                ) as HTMLElement | null;
+                return { path: f.path, distance: el ? Math.abs(el.offsetTop - scrollTop) : 0 };
+            })
+            .sort((a, b) => b.distance - a.distance);
+        for (const { path } of far.slice(0, visibleNotes.size - MAX_LOADED)) {
+            visibleNotes.delete(path);
+        }
+        visibleNotes = visibleNotes;
+    }
+
     // Whether the Daily Notes View leaf itself is visible on screen.
     // When it is hidden (tab switched away, layout adjustments), the
     // IntersectionObserver reports every note as "not visible", which must
@@ -314,10 +341,12 @@
         }
 
         if (isVisible) {
+            nearViewport.add(file.path);
             // Immediately mark as visible
             visibleNotes.add(file.path);
             visibleNotes = visibleNotes;
         } else {
+            nearViewport.delete(file.path);
             // Debounce marking as not visible to prevent spurious unloads
             const timeout = window.setTimeout(() => {
                 visibilityDebounceTimeouts.delete(file.path);
@@ -327,8 +356,7 @@
                     return;
                 }
 
-                visibleNotes.delete(file.path);
-                visibleNotes = visibleNotes;
+                evictFarNotes();
             }, 1000);
             visibilityDebounceTimeouts.set(file.path, timeout);
         }

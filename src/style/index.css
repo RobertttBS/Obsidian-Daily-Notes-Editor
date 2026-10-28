@@ -41,6 +41,10 @@
 .dn-editor .cm-scroller {
     padding: 0 !important;
     overflow-y: clip;
+    /* CodeMirror sets overflow-anchor:none because it anchors its own scroller.
+       Here the page scrolls, not CodeMirror, so hand anchoring back to the
+       browser: when a note above the viewport re-measures, the view stays put. */
+    overflow-anchor: auto;
 }
 .daily-note-view .daily-note-wrapper::before {
     content: "";

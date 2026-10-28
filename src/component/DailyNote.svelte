@@ -1,7 +1,6 @@
 <script lang="ts">
     import type DailyNoteViewPlugin from "../dailyNoteViewIndex";
     import {
-        MarkdownView,
         TAbstractFile,
         TFile,
         WorkspaceLeaf,
@@ -23,7 +22,6 @@
 
     let createdLeaf: WorkspaceLeaf;
     let unloadTimeout: number | null = null;
-    let measureTimeout: number | null = null;
     let editorHeight: number = 100; // Default minimum height
 
     // Track if this component is being destroyed
@@ -32,11 +30,41 @@
     // Track if the note is collapsed
     let isCollapsed: boolean = false;
 
+    // CodeMirror measures only lines that were on screen. Anything else it
+    // guesses with a 30-character line, 3-5x too tall on a wide window, so a
+    // placeholder or a kept height may only come from a note that was visible.
+    let everVisible = false;
+    let visibility: IntersectionObserver | null = null;
+
     onMount(() => {
         if (file instanceof TFile) {
             title = file.basename;
         }
+        if (containerEl) {
+            visibility = new IntersectionObserver((entries) => {
+                if (entries.some((e) => e.isIntersecting)) everVisible = true;
+            });
+            visibility.observe(containerEl);
+        }
+        if (!rendered) {
+            estimateHeight().then((h) => {
+                if (!rendered && !isDestroying) editorHeight = h;
+            });
+        }
     });
+
+    // Height the note will take once laid out, from its text and the editor
+    // width: wrapped lines at the body line height, plus the editor's padding.
+    async function estimateHeight(): Promise<number> {
+        if (!(file instanceof TFile) || !editorEl) return 100;
+        const text = await plugin.app.vault.cachedRead(file);
+        const fontSize = parseFloat(getComputedStyle(editorEl).fontSize) || 16;
+        const charsPerLine = Math.max(20, Math.floor(editorEl.clientWidth / (fontSize * 0.5)));
+        const lines = text
+            .split("\n")
+            .reduce((n, line) => n + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
+        return Math.round(lines * fontSize * 1.5) + 32;
+    }
 
     $: if (editorEl && shouldRender && !rendered) {
         showEditor();
@@ -46,13 +74,10 @@
 
     onDestroy(() => {
         isDestroying = true;
+        visibility?.disconnect();
         if (unloadTimeout) {
             window.clearTimeout(unloadTimeout);
             unloadTimeout = null;
-        }
-        if (measureTimeout) {
-            window.clearTimeout(measureTimeout);
-            measureTimeout = null;
         }
         if (rendered && createdLeaf) {
             unloadEditor();
@@ -96,21 +121,12 @@
 
             rendered = true;
 
-            // Set a small timeout to allow the editor to render completely
-            measureTimeout = window.setTimeout(() => {
-                measureTimeout = null;
-                if (createdLeaf && containerEl) {
-                    // Get the actual height of the editor content
-                    if (!(createdLeaf.view instanceof MarkdownView)) return;
-                    const actualHeight = (createdLeaf.view as any).editMode
-                        ?.editor?.cm?.dom.innerHeight;
-                    if (actualHeight > 0) {
-                        editorHeight = actualHeight;
-                        // Apply the height to the container
-                        containerEl.style.minHeight = `${editorHeight}px`;
-                    }
-                }
-            }, 400);
+            // The real editor is in: release any height kept while this note was
+            // unloaded. Never pin the editor's own early height: 400ms after
+            // creation CodeMirror still estimates its unrendered lines (cm-gap),
+            // often 3-5x too tall, and a pinned min-height outlived the correction
+            // as a blank page under the note.
+            editorHeight = 100;
         } catch (error) {
             console.error("Error creating leaf view:", error);
         }
@@ -152,6 +168,17 @@
                 workspace.setActiveLeaf(leaf, { focus: false });
             }
 
+            // Keep the note's measured height while it is unloaded so the
+            // placeholder occupies the same space and the page does not shift.
+            const keptHeight = containerEl?.getBoundingClientRect().height ?? 0;
+            if (everVisible && keptHeight > 0) {
+                editorHeight = keptHeight;
+            } else {
+                estimateHeight().then((h) => {
+                    if (!rendered && !isDestroying) editorHeight = h;
+                });
+            }
+
             // Detach the leaf
             if (createdLeaf.detach) {
                 createdLeaf.detach();
@@ -163,9 +190,6 @@
             }
 
             rendered = false;
-
-            // Keep the container height to prevent scroll jumps
-            // The height will be maintained by the min-height we set earlier
         } catch (error) {
             console.error("Error unloading editor:", error);
         }

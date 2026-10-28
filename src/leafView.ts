@@ -227,7 +227,16 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
         this.rootSplit.getContainer = () => DailyNoteEditor.containerForDocument(this.plugin, this.document);
 
         this.titleEl.insertAdjacentElement("afterend", this.rootSplit.containerEl);
-        const leaf = this.plugin.app.workspace.createLeafInParent(this.rootSplit, 0);
+        // createLeafInParent activates the new, still empty leaf. Every note
+        // that scrolled in pulled Obsidian's active leaf away from the Daily
+        // Notes view, and detaching an active leaf lands on the previously
+        // active tab (the "jumps to another note while scrolling" bug).
+        const workspace = this.plugin.app.workspace;
+        const previouslyActive = workspace.activeLeaf;
+        const leaf = workspace.createLeafInParent(this.rootSplit, 0);
+        if (previouslyActive && workspace.activeLeaf === leaf) {
+            workspace.setActiveLeaf(previouslyActive, { focus: false });
+        }
 
         this.updateLeaves();
         return leaf;
